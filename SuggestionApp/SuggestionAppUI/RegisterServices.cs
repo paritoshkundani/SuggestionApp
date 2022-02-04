@@ -11,8 +11,13 @@ public static class RegisterServices
         builder.Services.AddServerSideBlazor();
 
         // new things he added
-
         // caching is built into web projects so no need here to add it to Nuget for this project, AppLibrary he did at Nuget as that's a class project which will also use it
         builder.Services.AddMemoryCache();  
+        
+        builder.Services.AddSingleton<IDbConnection, DbConnection>();  // he did it as singleton (1 connection for all users), said can make it scoped
+        builder.Services.AddSingleton<ICategoryData, MongoCategoryData>();
+        builder.Services.AddSingleton<IStatusData, MongoStatusData>();
+        builder.Services.AddSingleton<ISuggestionData, MongoSuggestionData>();
+        builder.Services.AddSingleton<IUserData, MongoUserData>();
     }
 }
