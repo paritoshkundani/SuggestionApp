@@ -6,6 +6,79 @@
 @inject NavigationManager navManager
 @inject ProtectedSessionStorage sessionStorage
 
+<h1>Training Suggestions</h1>
+<div>
+    <button>Suggest</button>
+</div>
+
+<div>
+    <div>@suggestions?.Count Suggestions</div>
+    <div>
+        <button @onclick="(() => OrderByNew(true))">New</button>
+        <button @onclick="(() => OrderByNew(false))">Popular</button>
+    </div>
+    <div>
+        <input type="text" placeholder="Search" aria-label="Search box" @oninput="((txt) => OnSearchInput((string)txt.Value))" />
+    </div>
+</div>
+
+<div>
+    <div>
+        @if (suggestions is not null)
+        {
+            // Virtualize makes it a scrolling list, without paging, it will render just as much as needed
+            // like a ForEach, Context="s" is the variable in the loop for each suggestion
+            // OverscanCount will show only the number of elements which show on the page + 10
+            // TC did it so it will load all records from memory, there are other approaches where it will query as you scroll like paging
+            <Virtualize Items="@suggestions" Context="s" OverscanCount="10">
+                <div>
+                    <div>
+                        <div>@GetUpvoteTopText(s)</div>
+                        <span class="oi oi-caret-top"></span>
+                        <div>@GetUpvoteBottomText(s)</div>
+                    </div>
+                    <div @onclick="(() => OpenDetails(s))">
+                        @s.Suggestion
+                    </div>
+                    <div>
+                        <div @onclick="(() => OpenDetails(s))">
+                            @s.Category?.CategoryName
+                        </div>
+                    </div>
+                    <div>
+                        @s.SuggestionStatus?.StatusName
+                    </div>
+                </div>
+            </Virtualize>
+        }
+    </div>
+    <div>
+        @if (categories is not null)
+        {
+            <div>
+                <span>Category</span>
+                <div @onclick="(() => OnCategoryClick())">All</div>
+                @foreach(var c in categories)
+                {
+                    <div @onclick="(() => OnCategoryClick(c.CategoryName))">@c.CategoryName</div>
+                }
+            </div>
+        }
+        @if (statuses is not null)
+        {
+            <div>
+                <span>Status</span>
+                <div @onclick="(() => OnStatusClick())">All</div>
+                @foreach(var s in statuses)
+                {
+                    <div @onclick="(() => OnStatusClick(s.StatusName))">@s.StatusName</div>
+                }
+            </div>            
+        }
+    </div>
+</div>
+
+
 @code {
     private List<SuggestionModel> suggestions;
     private List<CategoryModel> categories;
