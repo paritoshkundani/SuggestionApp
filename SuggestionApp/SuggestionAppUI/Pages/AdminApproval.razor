@@ -1,0 +1,145 @@
+﻿@page "/AdminApproval"
+@inject ISuggestionData suggestionData
+@inject IUserData userData
+@inject NavigationManager navManager
+
+<h1>Pending Submissions</h1>
+
+<div>
+    <div>@submissions?.Count Submissions</div>
+    <div>
+        <button @onclick="ClosePage"></button>
+    </div>
+</div>
+
+@if (submissions is not null)
+{
+    foreach (var s in submissions)
+    {
+        <div>
+            <div>
+                <button @onclick="(() => ApproveSubmission(s))">Approve</button>
+                <button @onclick="(() => RejectSubmission(s))">Reject</button>
+            </div>
+            <div>
+                <div>
+                    @if (currentEditingTitle == s.Id)
+                    {
+                        <EditForm Model="@editedTitle" OnSubmit="(() => SaveTitle(s))">
+                            <InputText @bind-Value="editedTitle" />
+                            <button type="submit">
+                                <span class="oi oi-check"></span>
+                            </button>
+                            <button @onclick="(() => currentEditingTitle = String.Empty)">
+                                <span class="oi oi-x"></span>
+                            </button>
+                        </EditForm>
+                    }
+                    else
+                    {
+                        @s.Suggestion
+                        <span class="oi oi-pencil" @onclick="(() => EditTitle(s))"></span>
+                    }
+                </div>
+                <div>
+                    @s.Category.CategoryName
+                </div>
+                <div>
+                    @s.Author.DisplayName
+                </div>
+                <div>
+                    @if (currentEditingDescription == s.Id)
+                    {
+                        <EditForm Model="@editedDescription" OnSubmit="(() => SaveDescription(s))">
+                            <InputText @bind-Value="editedDescription" />
+                            <button type="submit">
+                                <span class="oi oi-check"></span>
+                            </button>
+                            <button @onclick="(() => currentEditingDescription = String.Empty)">
+                                <span class="oi oi-x"></span>
+                            </button>
+                        </EditForm>                        
+                    }
+                    else
+                    {
+                        @s.Description
+                        <span class="oi oi-pencil" @onclick="(() => EditDescription(s))"></span>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+
+    /*
+     * TC code does not really work with cancel edit, it's using the same variable to edit so original is lost
+     * if you edit and then click cancel it does not undo the text as the original was modified in the textbox
+     */
+
+    private List<SuggestionModel> submissions;
+    private SuggestionModel editingModel;
+
+    // for undo feature keep track of original values
+    private string currentEditingTitle = "";
+    private string editedTitle = "";
+    private string currentEditingDescription = "";
+    private string editedDescription = "";
+
+    protected async override Task OnInitializedAsync()
+    {
+        submissions = await suggestionData.GetAllSuggestionsWaitingForApproval();
+    }
+
+    private async Task ApproveSubmission(SuggestionModel submission)
+    {
+        submission.ApprovedForRelease = true;
+        // once approved remove it from the list
+        submissions.Remove(submission);
+        await suggestionData.UpdateSuggestion(submission);
+    }
+
+    private async Task RejectSubmission(SuggestionModel submission)
+    {
+        submission.Rejected = true;
+        // once rejected remove it from the list
+        submissions.Remove(submission);
+        await suggestionData.UpdateSuggestion(submission);
+    }
+
+    private void EditTitle(SuggestionModel model)
+    {
+        editingModel = model;
+        editedTitle = model.Suggestion;
+        currentEditingTitle = model.Id;
+        currentEditingDescription = ""; // blank to html will hide it since we are only editing Title
+    }
+
+    private async Task SaveTitle(SuggestionModel model)
+    {
+        currentEditingTitle = String.Empty; // close the field we are editing in html
+        model.Suggestion = editedTitle;
+        await suggestionData.UpdateSuggestion(model);
+    }
+
+    private void EditDescription(SuggestionModel model)
+    {
+        editingModel = model;
+        editedDescription = model.Description;
+        currentEditingDescription = model.Id;
+        currentEditingTitle = ""; // blank to html will hide it since we are only editing Description
+    }
+
+    private async Task SaveDescription(SuggestionModel model)
+    {
+        currentEditingDescription = String.Empty; // close the field we are editing in html
+        model.Description = editedDescription;
+        await suggestionData.UpdateSuggestion(model);
+    }
+
+    private void ClosePage()
+    {
+        navManager.NavigateTo("/");
+    }
+}
