@@ -1,4 +1,7 @@
-﻿namespace SuggestionAppUI;
+﻿using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Identity.Web;
+
+namespace SuggestionAppUI;
 
 public static class RegisterServices
 {
@@ -12,8 +15,18 @@ public static class RegisterServices
 
         // new things he added
         // caching is built into web projects so no need here to add it to Nuget for this project, AppLibrary he did at Nuget as that's a class project which will also use it
-        builder.Services.AddMemoryCache();  
-        
+        builder.Services.AddMemoryCache();
+
+        // set up Azure B2C for authentication
+        builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+            .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAdB2C"));
+
+        // use jobTitle = Admin claim for AdminPolicy to apply
+        builder.Services.AddAuthorization(options =>
+        {
+            options.AddPolicy("AdminPolicy", policy => policy.RequireClaim("jobTitle", "Admin"));
+        });
+
         builder.Services.AddSingleton<IDbConnection, DbConnection>();  // he did it as singleton (1 connection for all users), said can make it scoped
         builder.Services.AddSingleton<ICategoryData, MongoCategoryData>();
         builder.Services.AddSingleton<IStatusData, MongoStatusData>();

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Rewrite;
 using SuggestionAppUI;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +23,19 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+// force logout to go to home page rather than going to azure signed out page, which would just say you are signed out
+app.UseRewriter(
+    new RewriteOptions().Add(context =>
+    {
+        if (context.HttpContext.Request.Path == "/MicrosoftIdentity/Account/SignedOut")
+        {
+            context.HttpContext.Response.Redirect("/");
+        }
+    }));
 
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
