@@ -1,6 +1,8 @@
 ﻿@page "/Details/{Id}"
 @inject ISuggestionData suggestionData
 @inject NavigationManager navManager
+@inject AuthenticationStateProvider authProvider
+@inject IUserData userData
 
 <h1>Suggestion Details</h1>
 
@@ -10,7 +12,7 @@
         {
             <div>
                 <div>
-                    <div>
+                    <div @onclick="VoteUp">
                         <div>@GetUpvoteTopText()</div>
                         <span class="oi oi-caret-top"></span>
                         <div>@GetUpvoteBottomText()</div>
@@ -58,10 +60,12 @@
     public string Id { get; set; }
 
     private SuggestionModel suggestion;
+    private UserModel loggedInUser;
 
     protected async override Task OnInitializedAsync()
     {
         suggestion = await suggestionData.GetSuggestion(Id);
+        loggedInUser = await authProvider.GetUserFromAuth(userData);
     }
 
     private void ClosePage()
@@ -77,7 +81,14 @@
         }
         else
         {
-            return "Click To";
+            if (suggestion.Author.Id == loggedInUser?.Id)
+            {
+                return "Awaiting";  // you can't vote for your own suggestion
+            }
+            else
+            {
+                return "Click To";
+            }
         }
     }
 
@@ -90,6 +101,35 @@
         else
         {
             return "Upvote";
+        }
+    }
+
+    private async Task VoteUp()
+    {
+        if (loggedInUser is not null)
+        {
+            if (suggestion.Author.Id == loggedInUser.Id)
+            {
+                // Can't vote on your own suggestion
+                return;
+            }
+
+            // UserVotes is a HashSet, so Add will not allow duplicates if you already voted, Add returns boolean if
+            // it allowed Add or not
+            if (suggestion.UserVotes.Add(loggedInUser.Id) == false)
+            {
+                // treat as unvote
+                suggestion.UserVotes.Remove(loggedInUser.Id);
+            }
+
+            // save the add or remove to the db, the above .Add or .Remove will only update UI, still need to trigger db save
+            await suggestionData.UpvoteSuggestion(suggestion.Id, loggedInUser.Id);
+        }
+        else
+        {
+            // if you try to upvote and are not logged in will redirect to login
+            // forceLoad = true (2nd param) is needed as that url is outside blazor so force it to go
+            navManager.NavigateTo("/MicrosoftIdentity/Account/SignIn", true);
         }
     }
 }

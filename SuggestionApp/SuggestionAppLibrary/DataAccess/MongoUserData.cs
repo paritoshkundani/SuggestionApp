@@ -38,7 +38,7 @@ public class MongoUserData : IUserData
     public Task UpdateUser(UserModel user)
     {
         // locate the user based on Id
-        var filter = Builders<UserModel>.Filter.Eq("id", user.Id);
+        var filter = Builders<UserModel>.Filter.Eq("Id", user.Id);
         // replace the one is db with what we passed in, if not there add a new one to db (IsUpsert = true)
         return _users.ReplaceOneAsync(filter, user, new ReplaceOptions { IsUpsert = true });
     }

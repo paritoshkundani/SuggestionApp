@@ -5,6 +5,7 @@
 @inject IUserData userData
 @inject NavigationManager navManager
 @inject ProtectedSessionStorage sessionStorage
+@inject AuthenticationStateProvider authProvider
 
 <h1>Training Suggestions</h1>
 <div>
@@ -32,7 +33,7 @@
             // TC did it so it will load all records from memory, there are other approaches where it will query as you scroll like paging
             <Virtualize Items="@suggestions" Context="s" OverscanCount="10">
                 <div>
-                    <div>
+                    <div @onclick="(() => VoteUp(s))">
                         <div>@GetUpvoteTopText(s)</div>
                         <span class="oi oi-caret-top"></span>
                         <div>@GetUpvoteBottomText(s)</div>
@@ -80,6 +81,8 @@
 
 
 @code {
+    private UserModel loggedInUser;
+
     private List<SuggestionModel> suggestions;
     private List<CategoryModel> categories;
     private List<StatusModel> statuses;
@@ -93,6 +96,73 @@
     {
         categories = await categoryData.GetAllCategories();
         statuses = await statusData.GetAllStatuses();
+        await LoadAndVerifyUser();
+    }
+
+    private async Task LoadAndVerifyUser()
+    {
+        var authState = await authProvider.GetAuthenticationStateAsync();
+        string objectId = authState.User.Claims.FirstOrDefault(c => c.Type.Contains("objectidentifier"))?.Value;
+
+        // you are logged in
+        if (string.IsNullOrWhiteSpace(objectId) == false)
+        {
+            loggedInUser = await userData.GetUserFromAuthentication(objectId) ?? new();
+
+            string firstName = authState.User.Claims.FirstOrDefault(c => c.Type.Contains("givenname"))?.Value;
+            string lastName = authState.User.Claims.FirstOrDefault(c => c.Type.Contains("surname"))?.Value;
+
+            // for displayName ddi not use Contains as givename and surname also have "name" in it
+            string displayName = authState.User.Claims.FirstOrDefault(c => c.Type.Equals("name"))?.Value;
+            string email = authState.User.Claims.FirstOrDefault(c => c.Type.Contains("email"))?.Value;
+
+            // when we first log in loggedInUser will be null, so will get a new one, after that he
+            // populates the data from claims and wanted to then save user into db with lastest data from A2B
+
+            // have we changed the logged in user
+            bool isDirty = false;
+            if ((objectId == loggedInUser.ObjectIdentifier) == false)
+            {
+                isDirty = true;
+                loggedInUser.ObjectIdentifier = objectId;
+            }
+            if ((firstName == loggedInUser.FirstName) == false)
+            {
+                // new user
+                isDirty = true;
+                loggedInUser.FirstName = firstName;
+            }
+            if ((lastName == loggedInUser.LastName) == false)
+            {
+                // new user
+                isDirty = true;
+                loggedInUser.LastName = lastName;
+            }
+            if ((displayName == loggedInUser.DisplayName) == false)
+            {
+                // new user
+                isDirty = true;
+                loggedInUser.DisplayName = displayName;
+            }
+            if ((email == loggedInUser.EmailAddress) == false)
+            {
+                // new user
+                isDirty = true;
+                loggedInUser.EmailAddress = email;
+            }
+
+            if (isDirty)
+            {
+                if (string.IsNullOrWhiteSpace(loggedInUser.Id))
+                {
+                    await userData.CreateUser(loggedInUser);
+                } 
+                else
+                {
+                    await userData.UpdateUser(loggedInUser);
+                }
+            }
+        }
     }
 
     // blazor calls this twice the first time, intially it prerenders the page so the use sees something (firstRender)
@@ -190,6 +260,41 @@
         await FilterSuggestions();
     }
 
+    private async Task VoteUp(SuggestionModel suggestion)
+    {
+        if (loggedInUser is not null)
+        {
+            if (suggestion.Author.Id == loggedInUser.Id)
+            {
+                // Can't vote on your own suggestion
+                return;
+            }
+
+            // UserVotes is a HashSet, so Add will not allow duplicates if you already voted, Add returns boolean if
+            // it allowed Add or not
+            if (suggestion.UserVotes.Add(loggedInUser.Id) == false)
+            {
+                // treat as unvote
+                suggestion.UserVotes.Remove(loggedInUser.Id);
+            }
+
+            // save the add or remove to the db, the above .Add or .Remove will only update UI, still need to trigger db save
+            await suggestionData.UpvoteSuggestion(suggestion.Id, loggedInUser.Id);
+
+            if (isSortedByNew == false)
+            {
+                suggestions = suggestions.OrderByDescending(s => s.UserVotes.Count)
+                .ThenByDescending(s => s.DateCreated).ToList();
+            }
+        }
+        else
+        {
+            // if you try to upvote and are not logged in will redirect to login
+            // forceLoad = true (2nd param) is needed as that url is outside blazor so force it to go
+            navManager.NavigateTo("/MicrosoftIdentity/Account/SignIn", true);
+        }
+    }
+
     private string GetUpvoteTopText(SuggestionModel suggestion)
     {
         if (suggestion.UserVotes?.Count > 0)
@@ -198,7 +303,14 @@
         }
         else
         {
-            return "Click To";
+            if (suggestion.Author.Id == loggedInUser?.Id)
+            {
+                return "Awaiting";  // you can't vote for your own suggestion
+            }
+            else
+            {
+                return "Click To";
+            }
         }
     }
 
