@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "Apf/7plZT4id/K1kFjyVBOGVezKpzomexnikPB3UkWw=",
+  "Hash": "etFt9AvcGQEWWQ7NarR6dq9B+xiA2AUvDVfADofjx5U=",
   "Source": "SuggestionAppUI",
   "BasePath": "_content/SuggestionAppUI",
   "Mode": "Default",
@@ -270,6 +270,23 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot\\favicon.ico"
+    },
+    {
+      "Identity": "C:\\work\\proj\\SuggestionApp_TC\\SuggestionApp\\SuggestionAppUI\\wwwroot\\images\\SuggestionPageBackground.png",
+      "SourceId": "SuggestionAppUI",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\work\\proj\\SuggestionApp_TC\\SuggestionApp\\SuggestionAppUI\\wwwroot\\",
+      "BasePath": "_content/SuggestionAppUI",
+      "RelativePath": "images/SuggestionPageBackground.png",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\images\\SuggestionPageBackground.png"
     }
   ]
 }
